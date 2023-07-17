@@ -8,6 +8,7 @@ import {
   Res,
   HttpStatus,
   HttpCode,
+  UnauthorizedException,
 } from "@nestjs/common";
 import { Request, Response, NextFunction } from "express";
 import { AuthenticationService } from "./authentication.service";
@@ -24,11 +25,29 @@ export class AuthenticationController {
   @HttpCode(HttpStatus.OK)
   @Post("signIn")
   async signIn(
-    @Body() data: SignInDTO,
+    @Req() req: Request,
     @Res() res: Response,
     @Next() next: NextFunction
   ) {
     try {
+      const auth = req.headers.authorization;
+      if (!auth) throw new UnauthorizedException();
+      const [username, password] = Buffer.from(auth.split(" ")[1], "base64")
+        .toString()
+        .split(":");
+
+      const typeUsername = typeof username;
+      if (typeUsername === "undefined" || typeUsername !== "string")
+        throw new UnauthorizedException();
+
+      const typePassword = typeof password;
+      if (typePassword === "undefined" || typePassword !== "string")
+        throw new UnauthorizedException();
+
+      const data: SignInDTO = {
+        username,
+        password,
+      };
       const result = await this.authenticationService.signIn(data);
       return res.respond("APIO-XX-XXXX", "ok", result);
     } catch (error) {
